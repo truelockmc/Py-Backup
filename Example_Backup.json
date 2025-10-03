@@ -10,9 +10,11 @@
     "/home/user/Videos",
   ],
   "excludes": [
+    "/home/user/Documents/Secret",
+    "/home/user/Documents/tmp/*"
     
 
   ],
-  "destination": "/media/user/EXTERNAL_BACKUP"
+  "destination": "/media/user/Backup
 }
 

@@ -113,7 +113,7 @@ class SyncWorker(QThread):
             self.finished_sig.emit()
 
     def _is_excluded(self, abs_path: Path) -> bool:
-        s = str(abs_path.resolve())
+        s = str(abs_path.absolute())
         for pat in self.config.excludes:
             if fnmatch(s, pat):
                 return True
