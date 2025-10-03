@@ -112,25 +112,24 @@ class SyncWorker(QThread):
         finally:
             self.finished_sig.emit()
 
-    def _is_excluded(self, rel_path: Path):
-        # effizientere Prüfung der Excludes
-        s = str(rel_path)
+    def _is_excluded(self, abs_path: Path) -> bool:
+        s = str(abs_path.resolve())
         for pat in self.config.excludes:
             if fnmatch(s, pat):
                 return True
         return False
-
+    
     def _copy_file(self, src_file: Path, dest_file: Path):
         if src_file.is_symlink():
             target = os.readlink(src_file)
             if dest_file.exists():
-                # existierender Symlink
+                # existing Symlink
                 if dest_file.is_symlink():
                     existing_target = os.readlink(dest_file)
                     if existing_target == target:
                         self.status.emit(f"Symlink unchanged: {src_file}")
-                        return  # passt, nichts tun
-                # existiert, aber ist Datei/Ordner oder falscher Symlink → löschen
+                        return
+                # exists but wrong destination -> remove
                 try:
                     if dest_file.is_dir() and not dest_file.is_symlink():
                         shutil.rmtree(dest_file)
@@ -148,13 +147,13 @@ class SyncWorker(QThread):
                 logger.info(msg)
                 self.status.emit(msg)
             except FileExistsError:
-                # Falls jemand währenddessen das Ziel schon erstellt hat, einfach ignorieren
+                # If target got created during Process -> ignore
                 self.status.emit(f"Symlink already exists (ignored): {dest_file}")
             except Exception as e:
                 logger.warning(f"Failed to copy symlink {src_file}: {e}")
             return
 
-        # Normale Dateien
+        # Normal Files
         if dest_file.exists() and files_identical(src_file, dest_file):
             self.status.emit(f"Skipping (identical): {src_file.name}")
             return
@@ -184,12 +183,11 @@ class SyncWorker(QThread):
                 logger.warning(f'Source does not exist: {src}')
                 continue
             for root, dirs, files in os.walk(srcp, followlinks=False):
-                rel_root = Path(root).relative_to(srcp)
                 for f in files:
-                    rel_path = rel_root / f
-                    if self._is_excluded(rel_path):
+                    fp = Path(root) / f  # absolute Path
+                    if self._is_excluded(fp):
                         continue
-                    fp = Path(root) / f
+                    rel_path = Path(root).relative_to(srcp) / f
                     file_map.append((fp, rel_path, srcp.name))
                     try:
                         total_bytes += fp.stat().st_size
