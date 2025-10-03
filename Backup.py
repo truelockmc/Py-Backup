@@ -331,6 +331,7 @@ class BackupUI(QWidget):
         self.stop_button = QPushButton('Stop Backup')
         self.stop_button.setMaximumWidth(200)
         self.stop_button.clicked.connect(self.stop_backup)
+        self.stop_button.hide()  # initially hidden
         self.layout.addWidget(self.stop_button)
 
         self.log_handler = QtLogHandler()
@@ -354,30 +355,49 @@ class BackupUI(QWidget):
         self.log_text.append(msg)
         self.log_text.verticalScrollBar().setValue(self.log_text.verticalScrollBar().maximum())
 
+
     def start_backup(self):
         if not self.current_config:
             QMessageBox.warning(self, 'No Config', 'Please select a backup configuration.')
             return
+
         dest = QFileDialog.getExistingDirectory(self, 'Select Backup Destination', str(Path.home()))
         if not dest:
             return
-            
+
+        # change Button visibility
+        self.start_button.hide()
+        self.stop_button.show()
+
+        # create worker
         self.worker = SyncWorker(self.current_config, dest)
 
+        # Scanning Popup
         self.scanning_popup = ScanningPopup()
         self.scanning_popup.setWindowModality(Qt.ApplicationModal)
-
         self.worker.scanning_started.connect(self.scanning_popup.start)
         self.worker.scanning_finished.connect(self.scanning_popup.stop)
+
+        # Progress & Status
         self.worker.progress.connect(self.progress_bar.setValue)
         self.worker.status.connect(lambda s: self.status_label.setText(f"Status: {s}"))
-        self.worker.finished_sig.connect(lambda: self.status_label.setText("Status: Finished"))
+
+        # set buttons right after finished
+        self.worker.finished_sig.connect(self.backup_finished)
 
         self.worker.start()
 
     def stop_backup(self):
         if self.worker:
             self.worker.stop()
+            self.status_label.setText("Status: Stopping...")
+
+    def backup_finished(self):
+        # Backup finished → reset buttons
+        self.start_button.show()
+        self.stop_button.hide()
+        self.worker = None
+        self.status_label.setText("Status: Idle")
 
 if __name__ == '__main__':
     app = QApplication([])
