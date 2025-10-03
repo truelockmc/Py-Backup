@@ -157,4 +157,7 @@ MIT License – free to use, modify, and distribute.
 ---
 
 ## Screenshots
+<img width="837" height="672" alt="image" src="https://github.com/user-attachments/assets/320205ab-a6c9-46e2-8568-3fbed071f90c" />
+<img width="2469" height="636" alt="image" src="https://github.com/user-attachments/assets/16c17115-bdba-4c0a-bd62-a53ca271dc03" />
+
 
