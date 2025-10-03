@@ -51,10 +51,7 @@ python3 Backup.py
 
 ## Usage
 
-1. **Select a Backup Configuration**
-   On launch, the app lists all saved configurations (`*.json`) in the same directory as the script. Click on a configuration to select it.
-
-2. **Create/Modify Backup Configurations**
+1. **Create/Modify Backup Configurations**
    Each configuration is a JSON file containing:
 
 ```json
@@ -70,6 +67,11 @@ python3 Backup.py
 * `sources`: List of directories to backup.
 * `excludes`: Glob patterns to ignore certain files or directories.
 * `destination`: Default destination directory (optional, can be overridden when starting a backup).
+[Example](https://github.com/truelockmc/Py-Backup/?tab=readme-ov-file#example-json-configuration)
+
+
+2. **Select a Backup Configuration**
+   On launch, the app lists all saved configurations (`*.json`) in the same directory as the script. Click on a configuration to select it.
 
 3. **Start Backup**
 
