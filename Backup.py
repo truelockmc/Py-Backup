@@ -16,7 +16,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QLabel, QTextEdit,
                                QProgressBar, QPushButton, QListWidget, QFileDialog, QMessageBox)
-from PySide6.QtCore import QThread, Signal, QObject
+from PySide6.QtCore import QThread, Signal, QObject, Qt, QTimer
 
 try:
     from send2trash import send2trash
@@ -92,6 +92,8 @@ class SyncWorker(QThread):
     progress = Signal(int)
     status = Signal(str)
     finished_sig = Signal()
+    scanning_started = Signal()
+    scanning_finished = Signal()
 
     def __init__(self, config: BackupConfig, destination_override: str | None = None):
         super().__init__()
@@ -174,7 +176,9 @@ class SyncWorker(QThread):
         if not dest_root:
             self.status.emit('No destination set.')
             return
-
+            
+        self.scanning_started.emit()
+        
         file_map = []
         total_bytes = 0
         for src in self.config.sources:
@@ -193,6 +197,8 @@ class SyncWorker(QThread):
                         total_bytes += fp.stat().st_size
                     except FileNotFoundError:
                         continue
+                        
+        self.scanning_finished.emit()                
 
         copied_bytes = 0
         # Parallel Working with limited Threads
@@ -257,6 +263,34 @@ class SyncWorker(QThread):
 
         self.status.emit('Sync completed')
         self.progress.emit(100)
+        
+class ScanningPopup(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Scanning")
+        self.setWindowFlags(Qt.Dialog | Qt.CustomizeWindowHint | Qt.WindowTitleHint)
+        self.setStyleSheet("background-color: #2b2b2b; color: white; font-size: 16px; padding: 20px;")
+        
+        layout = QVBoxLayout()
+        self.label = QLabel("Scanning")
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+        
+        self.dots = 0
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_text)
+
+    def update_text(self):
+        self.dots = (self.dots + 1) % 4
+        self.label.setText("Scanning" + "." * self.dots)
+
+    def start(self):
+        self.show()
+        self.timer.start(500) # change all 500 ms
+
+    def stop(self):
+        self.timer.stop()
+        self.close()
 
 class BackupUI(QWidget):
     def __init__(self):
@@ -327,10 +361,18 @@ class BackupUI(QWidget):
         dest = QFileDialog.getExistingDirectory(self, 'Select Backup Destination', str(Path.home()))
         if not dest:
             return
+            
+        self.scanning_popup.setWindowModality(Qt.ApplicationModal)
+        self.scanning_popup = ScanningPopup()
+            
         self.worker = SyncWorker(self.current_config, dest)
         self.worker.progress.connect(self.progress_bar.setValue)
         self.worker.status.connect(lambda s: self.status_label.setText(f"Status: {s}"))
         self.worker.finished_sig.connect(lambda: self.status_label.setText("Status: Finished"))
+        
+        self.worker.scanning_started.connect(self.scanning_popup.start)
+        self.worker.scanning_finished.connect(self.scanning_popup.stop)
+        
         self.worker.start()
 
     def stop_backup(self):
