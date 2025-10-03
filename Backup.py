@@ -362,17 +362,17 @@ class BackupUI(QWidget):
         if not dest:
             return
             
-        self.scanning_popup.setWindowModality(Qt.ApplicationModal)
-        self.scanning_popup = ScanningPopup()
-            
         self.worker = SyncWorker(self.current_config, dest)
+
+        self.scanning_popup = ScanningPopup()
+        self.scanning_popup.setWindowModality(Qt.ApplicationModal)
+
+        self.worker.scanning_started.connect(self.scanning_popup.start)
+        self.worker.scanning_finished.connect(self.scanning_popup.stop)
         self.worker.progress.connect(self.progress_bar.setValue)
         self.worker.status.connect(lambda s: self.status_label.setText(f"Status: {s}"))
         self.worker.finished_sig.connect(lambda: self.status_label.setText("Status: Finished"))
-        
-        self.worker.scanning_started.connect(self.scanning_popup.start)
-        self.worker.scanning_finished.connect(self.scanning_popup.stop)
-        
+
         self.worker.start()
 
     def stop_backup(self):
